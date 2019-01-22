@@ -12,6 +12,7 @@ PASSWORD = "password"
 LED_PIN = 2
 MQTT_HOST = "192.168.0.1"
 MQTT_PORT = 1883
+MQTT_CLIENT_ID = "ESP8266"
 SLEEP_SEC = 60
 BLINK_ON = 300
 BLINK_OFF = 100
@@ -42,7 +43,7 @@ def do_connect():
     raise Exception("Unable to connect to ", SSID)
 
 def do_connect_mqtt():
-    c = MQTTClient("ESP8266", MQTT_HOST, MQTT_PORT)
+    c = MQTTClient(MQTT_CLIENT_ID, MQTT_HOST, MQTT_PORT)
     c.connect()
     return c
 
