@@ -10,9 +10,11 @@ from umqtt.robust import MQTTClient
 SSID = "AwesomeWifiName"
 PASSWORD = "password"
 LED_PIN = 2
-MQTT_HOST = "192.168.0.1"
+DS18B20_DATA_PIN = 5
+MQTT_HOST = "192.168.0.8"
 MQTT_PORT = 1883
 MQTT_CLIENT_ID = "ESP8266"
+MQTT_TOPIC = "esp_temp"
 SLEEP_SEC = 60
 BLINK_ON = 300
 BLINK_OFF = 100
@@ -48,7 +50,7 @@ def do_connect_mqtt():
     return c
 
 def measure_temp():
-    ow = onewire.OneWire(Pin(12))
+    ow = onewire.OneWire(Pin(DS18B20_DATA_PIN))
     ds = ds18x20.DS18X20(ow)
     roms = ds.scan()
     ds.convert_temp()
@@ -58,7 +60,7 @@ def measure_temp():
 def publish_mqtt(client, temp):
     # 85 is the error value when the sensor is not detected
     if(temp != 85):
-        client.publish("temp", str(temp))
+        client.publish(MQTT_TOPIC, str(temp))
     time.sleep(2)
 
 def esp_sleep(seconds):
