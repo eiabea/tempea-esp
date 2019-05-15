@@ -2,6 +2,8 @@
 
 ## Flash ESP8266 with Arduino (NONOS)
 
+This How-To is based on [this](https://tttapa.github.io/Pages/Arduino/ESP8266/Flashing/Flashing-With-an-Arduino.html) great explanations by [tttapa](https://github.com/tttapa)
+
 - Install [esptool](https://github.com/espressif/esptool)
 
 - Get the latest NONOS firmware from [here](https://github.com/espressif/ESP8266_NONOS_SDK/releases/)
