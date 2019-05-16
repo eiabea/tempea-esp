@@ -53,10 +53,16 @@ $ esptool -p /dev/ttyACM3 --chip esp8266 write_flash -fm dio 0x00000 boot_v1.7.b
 - Select the version you need from a drop-down box.
 - Click *install* button.
 
+## Installation of the DallasTemperature for Arduino IDE (C++ Version)
+- Open Manage Libraries... from Tools and find *DallasTemperature* by Miles Burton.
+- Select the version you need from a drop-down box.
+- Click *install* button.
+
 ## Dependencies
 - *board* esp8266 (v2.3.0)
 - *lib* PubSubClient (v2.6.0)
 - *lib* OneWire (v2.3.4)
+- *lib* DallasTemperature (v3.8.0)
 
 # Contribute
 
