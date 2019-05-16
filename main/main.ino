@@ -1,5 +1,8 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <stdint.h>
 
 #define DEBUG             0
 #define WIFI_SSID         "AwesomeWifiName"
@@ -22,21 +25,22 @@
 #define _PRINTF_
   #define _PRINTF_BUFFER_LENGTH_ 100
   static char _printf_buffer_[_PRINTF_BUFFER_LENGTH_];
-  #define printf(const char *format, ...)  {                                      \
+  #define printf(format, ...)  {                                      \
       snprintf(_printf_buffer_, sizeof(_printf_buffer_), format, ##__VA_ARGS__);  \
       Serial.print(_printf_buffer_);                                              \
     }
 #endif
 
-// https://github.com/PaulStoffregen/OneWire
 OneWire ow(DS18B20_DATA_PIN);
 DallasTemperature ds(&ow);
 
 WiFiClient wclient;
-PubSubClient mqtt(wclient, MQTT_HOST, MQTT_PORT);
+PubSubClient mqtt(MQTT_HOST, MQTT_PORT, wclient);
+static char str_temp[10];
+static char str_topic[20];
 
-void blink(unit8_t times){
-  for(unit8_t x=0; x<times; x++){
+void blink(byte times){
+  for(byte x=0; x<times; x++){
     digitalWrite(LED_PIN, LOW);
     delay(BLINK_OFF);
     digitalWrite(LED_PIN, HIGH);
@@ -46,7 +50,7 @@ void blink(unit8_t times){
 
 bool do_connect(void){
   // Stage one: check for default connection
-  for(uint8_t t = 0; t<30; t++){
+  for(byte t = 0; t<30; t++){
     if(WiFi.status() == WL_CONNECTED){
       printf("Connected to %s", WIFI_SSID);
       return true;
@@ -77,8 +81,9 @@ float measure_temp(void){
 }
 
 bool publish_mqtt(float temp){
-  String str_temp = String(temp);
-  mqtt.publish(MQTT_TOPIC, str_temp);
+  sprintf(str_temp,"%f",temp);
+  sprintf(str_topic,"%s",MQTT_TOPIC);
+  mqtt.publish(str_topic, str_temp);
   return true;
 }
 
@@ -92,7 +97,6 @@ void setup(){
 #if DEBUG == 1
   printf("%s", ESP.getResetReason());
 #endif
-  ow.begin();
 }
 
 void loop(){
@@ -103,9 +107,9 @@ void loop(){
     float temp = measure_temp();
     printf("Temp: %f", temp);
 
-    bool mqtt_err = false
-    mqtt_err = do_connect_mqtt() || mqtt_err;
-    mqtt_err = publish_mqtt(temp) || mqtt_err;
+    bool mqtt_err = false;
+    mqtt_err = do_connect_mqtt() | mqtt_err;
+    mqtt_err = publish_mqtt(temp) | mqtt_err;
     if(mqtt_err){
       printf("Unable to publish data to mqtt");
     }
