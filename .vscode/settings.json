@@ -1,6 +1,13 @@
 {
   "terminal.integrated.env.linux": {
-    "PATH": "/home/eiabea/.platformio/penv/bin:/home/eiabea/.platformio/penv:/home/eiabea/.gem/ruby/2.6.0/bin:/usr/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/opt/android-sdk/platform-tools:/opt/atlassian/plugin-sdk/bin:/usr/lib/jvm/default/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/home/eiabea/.gem/ruby/2.6.0/bin:/opt/atlassian/plugin-sdk/bin:/opt/android-sdk/platform-tools:/opt/atlassian/plugin-sdk/bin:/usr/lib/jvm/default/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl",
+    "PATH": "/home/ahmed/.platformio/penv/bin:/home/ahmed/.platformio/penv:/usr/lib/jvm/default//bin:/home/ahmed/.local/bin:/home/ahmed/.node_modules/bin:/home/ahmed/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/lib/jvm/default/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl:/opt/Espressif/esp-open-sdk/xtensa-lx106-elf/bin",
     "PLATFORMIO_CALLER": "vscode"
+  },
+  "files.associations": {
+    "array": "cpp",
+    "functional": "cpp",
+    "type_traits": "cpp",
+    "tuple": "cpp",
+    "utility": "cpp"
   }
 }
