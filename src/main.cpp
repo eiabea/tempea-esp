@@ -11,6 +11,8 @@
 #include "sensor-temp.h"
 #include "utils.h"
 
+static char string_buffer[16];
+
 static TempeaConfig config = TempeaConfig(EEPROM_CONFIG_ADDR);
 
 // ############################################################# WIFI AND MQTT CLIENT
@@ -91,21 +93,14 @@ void handleConfig() {
   if( server.hasArg("mqtt_host") && server.arg("mqtt_host") != NULL){
     Serial.print("SET config.get()->mqtt_host:");
     Serial.println(server.arg("mqtt_host"));
-
-    // TODO malloc should not happen inside of functions --> move them to global space ...
-    char tmp_mqtt_host_str[16] = { 0 };
     unsigned int tmp_mqtt_host[4];
-
-    server.arg("mqtt_host").toCharArray(tmp_mqtt_host_str, 16);
-
-    if(sscanf(tmp_mqtt_host_str, "%u.%u.%u.%u", &tmp_mqtt_host[0], &tmp_mqtt_host[1], &tmp_mqtt_host[2], &tmp_mqtt_host[3]) == 4){
+    server.arg("mqtt_host").toCharArray(string_buffer, 16);
+    if(sscanf(string_buffer, "%u.%u.%u.%u", &tmp_mqtt_host[0], &tmp_mqtt_host[1], &tmp_mqtt_host[2], &tmp_mqtt_host[3]) == 4){
       config.get()->mqtt_host[0] = tmp_mqtt_host[0];
       config.get()->mqtt_host[1] = tmp_mqtt_host[1];
       config.get()->mqtt_host[2] = tmp_mqtt_host[2];
       config.get()->mqtt_host[3] = tmp_mqtt_host[3];
-
     }
-    //TODO maybe send 400 on else
   }
   if( server.hasArg("mqtt_port") && server.arg("mqtt_port") != NULL){
     Serial.print("SET config.get()->mqtt_port:");
@@ -132,8 +127,6 @@ void handleConfig() {
   } else {
     server.send(400, "text/text", "400: Invalid Request");
   }
-  //TODO check if we have to send a 400 on any request
-  // server.send(400, "text/plain", "400: Invalid Request");
 }
 
 void handleNotFound(){
@@ -143,8 +136,6 @@ void handleNotFound(){
 void handleRoot() {
   server.send(200, "text/html", index_html);
 }
-
-const char *ssid = WIFI_CONFIG_SSID;
 
 bool do_connect_wifi(void){
   // Stage one: check for default connection
@@ -209,10 +200,10 @@ void setup(){
 }
 
 void run_setup(){
-  Serial.printf("run_setup");
+  Serial.printf("run_setup\n");
 
   WiFi.setOutputPower(20.5);
-  WiFi.softAP(ssid);
+  WiFi.softAP(WIFI_CONFIG_SSID);
 
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
@@ -229,7 +220,7 @@ void run_setup(){
   }
 }
 
-static char str_temp[10];
+
 
 void loop(){
   
@@ -253,11 +244,11 @@ void loop(){
     }else{
       Serial.printf("Temp: %f\n", temp);
 
-      Serial.printf(str_temp,"%f\n",temp);
+      Serial.printf(string_buffer,"6f\n",temp);
 
       bool mqtt_err = false;
       mqtt_err = mqttClient.connect() | mqtt_err;
-      mqtt_err = mqttClient.publish(str_temp) | mqtt_err;
+      mqtt_err = mqttClient.publish(string_buffer) | mqtt_err;
       if(mqtt_err){
         Serial.printf("Unable to publish data to mqtt\n");
         run_setup();
