@@ -205,6 +205,8 @@ void run_setup(){
   WiFi.setOutputPower(20.5);
   WiFi.softAP(WIFI_CONFIG_SSID);
 
+  WiFi.printDiag(Serial);
+
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
@@ -219,8 +221,6 @@ void run_setup(){
     server.handleClient();
   }
 }
-
-
 
 void loop(){
   
