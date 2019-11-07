@@ -3,6 +3,8 @@
 
 #define DEBUG                       1
 
+#define RESET_CONFIG_ON_BOOT        0
+
 #define WIFI_CONFIG_SSID            "tempeaCONFIG" //TODO check or add cpuid for SSID
 #define WIFI_CONFIG_SERVER_PORT     80
 

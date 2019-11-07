@@ -8,21 +8,21 @@
 #include "settings.h"
 #include "tempea-config.h"
 #include "tempea-mqtt.h"
+#include "sensor-temp.h"
 #include "utils.h"
 
-
-static TempeaConfig config(EEPROM_CONFIG_ADDR);
+static TempeaConfig config = TempeaConfig(EEPROM_CONFIG_ADDR);
 
 // ############################################################# WIFI AND MQTT CLIENT
 
-static WiFiClient wifiClient();
+static WiFiClient wifiClient = WiFiClient();
 static bool wifiConnected = false;
 
 // ############################################################# SERVER
 
 ESP8266WebServer server(WIFI_CONFIG_SERVER_PORT);
 
-static const char* index_html= "<title>tempbea-config</title>"
+static const char* index_html= "<title>tempea-config</title>"
 "<style>"
 "body, input {"
 "background-color: #2c3e50 !important;"
@@ -52,7 +52,7 @@ static const char* index_html= "<title>tempbea-config</title>"
 "font-weight: bold;}"
 "</style>"
 "<form action='/config' method='POST'>"
-"<h1>tempbea</h1>"
+"<h1>tempea</h1>"
 "<div class='label'>Wifi SSID"
 "<input name='wifi_ssid' placeholder='config.get()->wifi_ssid'>"
 "</div>"
@@ -81,23 +81,29 @@ void handleConfig() {
   if( server.hasArg("wifi_ssid") && server.arg("wifi_ssid") != NULL){
     Serial.print("SET config.get()->wifi_ssid:");
     Serial.println(server.arg("wifi_ssid"));
-    server.arg("wifi_ssid").toCharArray(config.get()->wifi_ssid, sizeof(config.get()->wifi_ssid));
+    server.arg("wifi_ssid").toCharArray(config.get()->wifi_ssid, WIFI_SSID_LEN);
   }
   if( server.hasArg("wifi_password") && server.arg("wifi_password") != NULL){
     Serial.print("SET config.get()->wifi_password:");
     Serial.println(server.arg("wifi_password"));
-    server.arg("wifi_password").toCharArray(config.get()->wifi_password, sizeof(config.get()->wifi_password));
+    server.arg("wifi_password").toCharArray(config.get()->wifi_password, WIFI_PASSWORD_LEN);
   }
   if( server.hasArg("mqtt_host") && server.arg("mqtt_host") != NULL){
     Serial.print("SET config.get()->mqtt_host:");
     Serial.println(server.arg("mqtt_host"));
+
     // TODO malloc should not happen inside of functions --> move them to global space ...
     char tmp_mqtt_host_str[16] = { 0 };
-    uint8_t tmp_mqtt_host[4];
+    unsigned int tmp_mqtt_host[4];
 
     server.arg("mqtt_host").toCharArray(tmp_mqtt_host_str, 16);
+
     if(sscanf(tmp_mqtt_host_str, "%u.%u.%u.%u", &tmp_mqtt_host[0], &tmp_mqtt_host[1], &tmp_mqtt_host[2], &tmp_mqtt_host[3]) == 4){
-      memcpy(config.get()->mqtt_host, tmp_mqtt_host, sizeof(config.get()->mqtt_host));
+      config.get()->mqtt_host[0] = tmp_mqtt_host[0];
+      config.get()->mqtt_host[1] = tmp_mqtt_host[1];
+      config.get()->mqtt_host[2] = tmp_mqtt_host[2];
+      config.get()->mqtt_host[3] = tmp_mqtt_host[3];
+
     }
     //TODO maybe send 400 on else
   }
@@ -148,8 +154,9 @@ bool do_connect(void){
       return true;
     }
     Serial.printf("Trying to connect to wifi %u\n", t);
+    Serial.printf("SSID: %s, PW: %s\n", config.get()->wifi_ssid, config.get()->wifi_password);
     if(t == 0){
-       WiFi.begin(config.get()->wifi_ssid, config.get()->wifi_password);
+      WiFi.begin(config.get()->wifi_ssid, config.get()->wifi_password);
     }
     delay(1000);
   }
@@ -192,6 +199,11 @@ void setup(){
   pinMode(LED_PIN, OUTPUT);
 #endif
 
+  //reset the config if needed
+#if RESET_CONFIG_ON_BOOT == 1
+  config.reset();
+#endif
+
   //inital config setup
   config.load();
 }
@@ -217,6 +229,8 @@ void run_setup(){
   }
 }
 
+static char str_temp[10];
+
 void loop(){
   
   if(config.validate()){
@@ -225,32 +239,37 @@ void loop(){
     run_setup();
   }
 
-  // if(do_connect()){
-  //   Serial.printf("run_main");
+  if(do_connect()){
+    Serial.printf("run_main");
 
-  //   blink(1);
+    blink(1);
 
-  //   float temp = measure_temp();
-  //   if(temp == -127){
-  //     Serial.printf("Temperature sensor not connected on pin %u\n", DS18B20_DATA_PIN);
-  //   }else{
-  //     Serial.printf("Temp: %f\n", temp);
+    MqttClient mqttClient = MqttClient(&wifiClient, &config);
+    TempSensor tempSensor = TempSensor(DS18B20_DATA_PIN);
 
-  //     bool mqtt_err = false;
-  //     mqtt_err = do_connect_mqtt() | mqtt_err;
-  //     mqtt_err = publish_mqtt(temp) | mqtt_err;
-  //     if(mqtt_err){
-  //       Serial.printf("Unable to publish data to mqtt\n");
-  //       run_setup();
-  //     }
-  //   }
+    float temp = tempSensor.getTempC();
+    if(temp == -127){
+      Serial.printf("Temperature sensor not connected on pin %u\n", DS18B20_DATA_PIN);
+    }else{
+      Serial.printf("Temp: %f\n", temp);
 
-  //   blink(2);
-  //   esp_sleep(SLEEP_SEC);
-  //   return;
-  // } else {
-  //   Serial.printf("Unable to connect to wifi\n");
-  //   blink(5);
-  //   run_setup();
-  // }
+      Serial.printf(str_temp,"%f\n",temp);
+
+      bool mqtt_err = false;
+      mqtt_err = mqttClient.connect() | mqtt_err;
+      mqtt_err = mqttClient.publish(str_temp) | mqtt_err;
+      if(mqtt_err){
+        Serial.printf("Unable to publish data to mqtt\n");
+        run_setup();
+      }
+    }
+
+    blink(2);
+    esp_sleep(SLEEP_SEC);
+    return;
+  } else {
+    Serial.printf("Unable to connect to wifi\n");
+    blink(5);
+    run_setup();
+  }
 }
