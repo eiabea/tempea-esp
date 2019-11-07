@@ -146,7 +146,7 @@ void handleRoot() {
 
 const char *ssid = WIFI_CONFIG_SSID;
 
-bool do_connect(void){
+bool do_connect_wifi(void){
   // Stage one: check for default connection
   for(byte t = 0; t<WIFI_RETRY_COUNT; t++){
     if(WiFi.status() == WL_CONNECTED){
@@ -239,7 +239,7 @@ void loop(){
     run_setup();
   }
 
-  if(do_connect()){
+  if(do_connect_wifi()){
     Serial.printf("run_main");
 
     blink(1);
