@@ -49,6 +49,7 @@ bool stralpha(const void* arr, const void* alpha){
 		return false;
   for(size_t i=0;i<s_arr;i++){
     bool match = false;
+    p_alpha = (char*)alpha;
     for(size_t j=0;j<s_alpha;j++){
       if(*p_arr == *p_alpha){
         match = true;

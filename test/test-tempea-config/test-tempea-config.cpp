@@ -12,7 +12,7 @@ static TempeaConfig config(EEPROM_CONFIG_ADDR);
 static eeprom_config expected_validConfig = {
    "0123456789012345678901234567890",
    "01234567890123456789012345678901234567890123456789012345678901",
-   { 0xff, 0xff, 0xff, 0xff },
+   { 192, 168, 1, 3 },
    12345,
    "0123456789012345678901",
    "0123456789012345678901234567890123456789012345678"
@@ -203,17 +203,19 @@ void test_invalid_mqtt_host_zero (){
   TEST_ASSERT_EQUAL(valid, false);
 }
 
-void test_valid_config(){
+void test_valid_config (){
   eeprom_config* conf = config.get();
   
   //copy data
   memcpy(conf, &expected_validConfig, sizeof(eeprom_config));
 
+  Serial.println("\n\n#################### SAVING ");
   config.print();
 
   //save to EEPROM
   config.save();
   
+  Serial.println("\n\n#################### LAODING ");
   config.load();
   eeprom_config* loaded_conf = config.get();
 
@@ -229,9 +231,23 @@ void setup(){
 void loop(){
   UNITY_BEGIN();
 
-  RUN_TEST(test_invalid_zero_config);
-
   RUN_TEST(test_valid_config);
+
+  RUN_TEST(test_invalid_zero_config);
+  RUN_TEST(test_invalid_wifi_ssid_zero);
+  RUN_TEST(test_invalid_wifi_ssid_startchar_0);
+  RUN_TEST(test_invalid_wifi_ssid_startchar_1);
+  RUN_TEST(test_invalid_wifi_ssid_startchar_2);
+  RUN_TEST(test_invalid_wifi_ssid_inavlidchar_0);
+  RUN_TEST(test_invalid_wifi_ssid_inavlidchar_1);
+  RUN_TEST(test_invalid_wifi_ssid_inavlidchar_2);
+  RUN_TEST(test_invalid_wifi_ssid_inavlidchar_3);
+  RUN_TEST(test_invalid_wifi_ssid_inavlidchar_4);
+  RUN_TEST(test_invalid_wifi_password_zero);
+
+  RUN_TEST(test_invalid_mqtt_host_zero);
+  
+
 
   UNITY_END();
 }

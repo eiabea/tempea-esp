@@ -19,7 +19,7 @@ TempeaConfig::~TempeaConfig(){
 }
 
 bool TempeaConfig::load(){
-    //init eeprom if not done before
+  //init eeprom if not done before
   if(!initialized){
     EEPROM.begin(sizeof(eeprom_config));
     initialized = true;
@@ -27,15 +27,14 @@ bool TempeaConfig::load(){
   EEPROM.get(address, config);
   loaded = true;
 
-  int8_t validityCheck = validate();
-
-  if(validityCheck > 0){
+  if(validate()){
     valid = true;
     Serial.printf("Info: TempeaConfig is valid\n");
-  } else {
-    valid = false;
-    Serial.printf("Error: TempeaConfig is invalid: %d\n", validityCheck);
-  }
+    return valid;
+  } 
+  
+  valid = false;
+  Serial.printf("Error: TempeaConfig is invalid\n");
 
   return valid;
 }
@@ -46,19 +45,17 @@ bool TempeaConfig::save(){
     return false;
   }
 
-  int8_t validityCheck = validate();
-
-  if(validityCheck > 0){
+  if(validate()){
     valid = true;
     Serial.printf("Info: TempeaConfig is valid ... saving\n");
     EEPROM.put(address, config);
     return EEPROM.commit();
-  } else {
-    valid = false;
-    Serial.printf("Error: TempeaConfig is invalid: %d\n", validityCheck);
-  }
+  } 
 
-  return false;
+  valid = false;
+  Serial.printf("Error: TempeaConfig is invalid");
+
+  return valid;
 }
 
 bool TempeaConfig::reset(){
@@ -138,9 +135,9 @@ bool TempeaConfig::validate_password(){
 bool TempeaConfig::validate_host(){
   // invalid IP
   for(uint8_t i=0; i<INVALID_MQTT_HOSTS_SIZE; i++){
-    if(memcmp(&config.mqtt_host, &INVALID_MQTT_HOSTS[i], sizeof(config.mqtt_host)) != 0){
+    if(memcmp(&config.mqtt_host, INVALID_MQTT_HOSTS[i], sizeof(config.mqtt_host)) == 0){
 #if DEBUG == 1
-      Serial.println("config.mqtt_host invalid IP failed");
+      Serial.printf("config.mqtt_host invalid IP failed %d\n", i);
 #endif
       return false;
     }
