@@ -2,6 +2,7 @@
 #define _TEMPEACONFIG_H_
 
 #include <stdint.h>
+#include <string.h>
 
 #include <HardwareSerial.h>
 #include <ESP_EEPROM.h>
@@ -12,8 +13,8 @@
 
 #ifndef _PARAMS_VALIDATION
 #define _PARAMS_VALIDATION
-  static const char INVALID_SSID_START_CHARS[] = {'!', '#', ';'};
-  static const char INVALID_SSID_CHARS[] = {'+', ']', '/', '"', '\t'};
+  static const char INVALID_SSID_START_CHARS[] = "!#;";
+  static const char INVALID_SSID_CHARS[] = "+]\"\t";
 
   #define INVALID_MQTT_HOSTS_SIZE 3
   static const uint8_t INVALID_MQTT_HOSTS[3][4] = {{0, 0, 0, 0}, {127, 0, 0, 1}, {255, 255, 255, 255}};
@@ -29,14 +30,17 @@
 #define MQTT_CLIENT_ID_LEN 23
 #define MQTT_TOPIC_LEN 50
 
+#pragma pack(1)
 typedef struct {            // EEPROM CONFIG (aka NonVolatileMemory)
       char        wifi_ssid[WIFI_SSID_LEN];
       char        wifi_password[WIFI_PASSWORD_LEN];
       uint8_t     mqtt_host[MQTT_HOST_LEN];
-      uint16_t    mqtt_port;
       char        mqtt_client_id[MQTT_CLIENT_ID_LEN];
       char        mqtt_topic[MQTT_TOPIC_LEN];     //TODO check 50 chars is enough
+      uint16_t    mqtt_port;
 } eeprom_config;
+
+#define EEPROM_CONFIG_SIZE 174
 
 // Configuration of the Application
 class TempeaConfig {
@@ -45,12 +49,6 @@ class TempeaConfig {
     bool loaded;
     int address;
     eeprom_config config;
-    bool validate_ssid();
-    bool validate_password();
-    bool validate_host();
-    bool validate_port();
-    bool validate_clientid();
-    bool validate_topic();
   public:
     TempeaConfig(int eeprom_addr);
     ~TempeaConfig();
@@ -59,6 +57,12 @@ class TempeaConfig {
     bool reset();
     void print();
     bool validate();
+    bool validate_ssid();
+    bool validate_password();
+    bool validate_host();
+    bool validate_port();
+    bool validate_clientid();
+    bool validate_topic();
     eeprom_config* get();
 };
 

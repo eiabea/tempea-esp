@@ -9,6 +9,7 @@
 class TempSensor {
     OneWire* oneWire;
     DallasTemperature* dallasTemperature;
+    float temperatureCorrection;
   public:
     TempSensor(uint8_t ds18b20_pin);
     ~TempSensor();

@@ -10,10 +10,9 @@ MqttClient::~MqttClient(){}
 
 bool MqttClient::connect(){
   if (!mqttClient->connected()) {
-    mqttClient->connect(config->get()->mqtt_client_id);
-    return true;
+    return mqttClient->connect(config->get()->mqtt_client_id);
   }
-  return false;
+  return true;
 }
 
 bool MqttClient::publish(char *msg){

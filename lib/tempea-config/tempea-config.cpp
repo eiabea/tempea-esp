@@ -95,7 +95,7 @@ bool TempeaConfig::validate_ssid(){
   // startchar
   if(strpbrk(config.wifi_ssid, INVALID_SSID_START_CHARS) == config.wifi_ssid){
 #if DEBUG == 1
-    Serial.println("config.wifi_ssid startchar failed");
+    Serial.printf("config.wifi_ssid startchar failed (%s)\n", config.wifi_ssid);
 #endif
     return false;
   }
@@ -103,7 +103,7 @@ bool TempeaConfig::validate_ssid(){
   // inavlidchar
   if(strpbrk(config.wifi_ssid, INVALID_SSID_CHARS) != NULL){
 #if DEBUG == 1
-    Serial.println("config.wifi_ssid inavlidchar failed");
+    Serial.printf("config.wifi_ssid invlidchar failed (%s)\n", config.wifi_ssid);
 #endif
     return false;
   }  
@@ -115,7 +115,7 @@ bool TempeaConfig::validate_password(){
   // zero
   if(memall(&config.wifi_password, 0x00, sizeof(config))){
 #if DEBUG == 1
-    Serial.println("config.wifi_password zero failed");
+    Serial.printf("config.wifi_password zero failed (%s)\n", config.wifi_password);
 #endif
     return false;
   }
@@ -124,7 +124,7 @@ bool TempeaConfig::validate_password(){
   size_t s = strlen(config.wifi_password);
   if(s < 1){
 #if DEBUG == 1
-    Serial.println("config.wifi_password strlen failed");
+    Serial.println("config.wifi_password strlen failed (%s)");
 #endif
     return false;
   }
@@ -135,7 +135,7 @@ bool TempeaConfig::validate_password(){
 bool TempeaConfig::validate_host(){
   // invalid IP
   for(uint8_t i=0; i<INVALID_MQTT_HOSTS_SIZE; i++){
-    if(memcmp(&config.mqtt_host, INVALID_MQTT_HOSTS[i], sizeof(config.mqtt_host)) == 0){
+    if(memcmp(config.mqtt_host, INVALID_MQTT_HOSTS[i], MQTT_HOST_LEN) == 0){
 #if DEBUG == 1
       Serial.printf("config.mqtt_host invalid IP failed %d\n", i);
 #endif
@@ -162,7 +162,7 @@ bool TempeaConfig::validate_clientid(){
   // zero
   if(memall(&config.mqtt_client_id, 0x00, sizeof(config))){
 #if DEBUG == 1
-    Serial.println("config.mqtt_client_id zero failed");
+    Serial.printf("config.mqtt_client_id zero failed (%s)\n", config.mqtt_client_id);
 #endif
     return false;
   }
@@ -171,7 +171,7 @@ bool TempeaConfig::validate_clientid(){
   size_t s = strlen(config.mqtt_client_id);
   if(s < 1){
 #if DEBUG == 1
-    Serial.println("config.mqtt_client_id strlen failed");
+    Serial.printf("config.mqtt_client_id strlen failed (%s)\n", config.mqtt_client_id);
 #endif
     return false;
   }
@@ -179,7 +179,7 @@ bool TempeaConfig::validate_clientid(){
   // alphabet
   if(!stralpha(&config.mqtt_client_id, &VALID_CLIENT_ALPHABET)){
 #if DEBUG == 1
-    Serial.println("config.mqtt_client_id alphabet failed");
+    Serial.printf("config.mqtt_client_id alphabet failed (%s)\n", config.mqtt_client_id);
 #endif
     return false;
   }
@@ -208,7 +208,7 @@ bool TempeaConfig::validate_topic(){
   // alphabet
   if(!stralpha(&config.mqtt_topic, &VALID_TOPIC_ALPHABET)){
 #if DEBUG == 1
-    Serial.println("config.mqtt_topic alphabet failed");
+    Serial.printf("config.mqtt_topic alphabet failed (%s)\n", config.mqtt_topic);
 #endif
     return false;
   }

@@ -38,6 +38,7 @@ static char *invalid_wifi_ssid_inavlidchar_1= "jsdlfjllejklej]  JLSJKLenfkj";
 static char *invalid_wifi_ssid_inavlidchar_2= "jsdlfjl+jklejfw + JLSJKLenfkj";
 static char *invalid_wifi_ssid_inavlidchar_3= "jsdlfjllej\"ejfw  JLSJKLenfkj";
 static char *invalid_wifi_ssid_inavlidchar_4= "jsdlfjllejklej\tfw  JLSJKLenfkj";
+static char valid_wifi_ssid_0[] = "MoBase";
 
 static char *invalid_wifi_password_zero = "";
 
@@ -185,12 +186,74 @@ void test_invalid_wifi_ssid_inavlidchar_4 (){
   TEST_ASSERT_EQUAL(valid, false);
 }
 
+void test_valid_wifi_ssid_0 (){
+  eeprom_config* conf = config.get();
+
+  snprintf(conf->wifi_ssid, WIFI_SSID_LEN, valid_wifi_ssid_0);
+
+  Serial.printf("%d", &conf->wifi_ssid);
+
+  if(strpbrk(conf->wifi_ssid, INVALID_SSID_START_CHARS) == conf->wifi_ssid){
+    Serial.println("Failed INVALID_SSID_START_CHARS");
+  }
+
+  if(strpbrk(conf->wifi_ssid, INVALID_SSID_CHARS) != NULL){
+    Serial.println("Failed INVALID_SSID_CHARS");
+  }
+
+  bool valid = config.validate_ssid();
+  TEST_ASSERT_TRUE(valid);
+}
+
+void test_strpbrk () {
+  const char INVALID_SSID_START_CHARS[] = {'!', '#', ';'};
+  const char INVALID_SSID_CHARS[] = {'+', ']', '/', '"', '\t'};
+
+  eeprom_config* conf = config.get();
+  // memset(conf->wifi_ssid, 0x00, WIFI_SSID_LEN);
+
+  snprintf(conf->wifi_ssid, WIFI_SSID_LEN, valid_wifi_ssid_0);
+
+  if(strpbrk(conf->wifi_ssid, INVALID_SSID_START_CHARS) == conf->wifi_ssid){
+    Serial.println("Failed INVALID_SSID_START_CHARS");
+  }
+
+  if(strpbrk(conf->wifi_ssid, INVALID_SSID_CHARS) != NULL){
+    Serial.println("Failed INVALID_SSID_CHARS");
+  }
+
+  bool invalid = strpbrk(conf->wifi_ssid, INVALID_SSID_START_CHARS) == conf->wifi_ssid | strpbrk(conf->wifi_ssid, INVALID_SSID_CHARS) != NULL;
+  TEST_ASSERT_EQUAL(invalid, false);
+}
+
+void test_invalid_start_strpbrk () {
+
+  char buffer[32] = {0x00};
+
+  snprintf(buffer, 32, "!MoBase");
+
+  bool invalid = strpbrk(buffer, INVALID_SSID_START_CHARS) == buffer | strpbrk(buffer, INVALID_SSID_CHARS) != NULL;
+  TEST_ASSERT_EQUAL(invalid, true);
+}
+
+void test_invalid_char_strpbrk () {
+  const char INVALID_SSID_START_CHARS[] = {'!', '#', ';'};
+  const char INVALID_SSID_CHARS[] = {'+', ']', '/', '"', '\t'};
+
+  char buffer[32] = {0x00};
+
+  snprintf(buffer, 32, "MoB/ase");
+
+  bool invalid = strpbrk(buffer, INVALID_SSID_START_CHARS) == buffer | strpbrk(buffer, INVALID_SSID_CHARS) != NULL;
+  TEST_ASSERT_EQUAL(invalid, true);
+}
+
 void test_invalid_wifi_password_zero (){
   config.load();
   eeprom_config* conf = config.get();
   memset(conf->wifi_password, 0x00, sizeof(char)* WIFI_PASSWORD_LEN);
   memcpy(conf->wifi_password, invalid_wifi_password_zero, sizeof(invalid_wifi_password_zero));
-  bool valid = config.validate();
+  bool valid = config.validate_password();
   TEST_ASSERT_EQUAL(valid, false);
 }
 
@@ -225,11 +288,14 @@ void test_valid_config (){
 }
 
 void setup(){
-  config.load();
 }
 
 void loop(){
   UNITY_BEGIN();
+
+  RUN_TEST(test_strpbrk);
+  RUN_TEST(test_invalid_start_strpbrk);
+  RUN_TEST(test_invalid_char_strpbrk);
 
   RUN_TEST(test_valid_config);
 
@@ -243,11 +309,10 @@ void loop(){
   RUN_TEST(test_invalid_wifi_ssid_inavlidchar_2);
   RUN_TEST(test_invalid_wifi_ssid_inavlidchar_3);
   RUN_TEST(test_invalid_wifi_ssid_inavlidchar_4);
+  RUN_TEST(test_valid_wifi_ssid_0);
   RUN_TEST(test_invalid_wifi_password_zero);
 
   RUN_TEST(test_invalid_mqtt_host_zero);
   
-
-
   UNITY_END();
 }

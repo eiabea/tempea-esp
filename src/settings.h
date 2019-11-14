@@ -10,7 +10,7 @@
 
 #define WIFI_RETRY_COUNT            30
 #define LED_PIN                     1
-#define DS18B20_DATA_PIN            5
+#define DS18B20_DATA_PIN            4
 
 #define SLEEP_SEC                   10
 #define BLINK_ON                    300
