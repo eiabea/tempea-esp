@@ -1,108 +1,166 @@
 #include <Arduino.h>
-#include <ESP8266WiFi.h>
-#include <PubSubClient.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
 
-#define DEBUG             1
-#define WIFI_SSID         "AwesomeWifiName"
-#define WIFI_PASSWORD     "password"
-#define WIFI_RETRY_COUNT  30
-#define LED_PIN           1
-#define DS18B20_DATA_PIN  5
-#ifndef _MQTT_HOST
-  #define _MQTT_HOST
-  const static IPAddress MQTT_HOST(172, 16, 0, 2);
-#endif //_MQTT_HOST
-#define MQTT_PORT         1883
-#define MQTT_CLIENT_ID    "ESP8266"
-#define MQTT_TOPIC        "esp_temp"
-#define SLEEP_SEC         10
-#define BLINK_ON          300
-#define BLINK_OFF         100
+#include "settings.h"
+#include "tempea-config.h"
+#include "tempea-mqtt.h"
+#include "sensor-temp.h"
+#include "utils.h"
 
-// printf function wrapper
-// #ifndef _PRINTF_
-// #define _PRINTF_
-//   #define _PRINTF_BUFFER_LENGTH_ 100
-//   static char _printf_buffer_[_PRINTF_BUFFER_LENGTH_];
-//   #define printf(format, ...)  {                                      
-//       snprintf(_printf_buffer_, sizeof(_printf_buffer_), format, ##__VA_ARGS__);  
-//       Serial.print(_printf_buffer_);                                              
-//     }
-// #endif
+#define STRING_BUFFER_LEN 32
+static char string_buffer[STRING_BUFFER_LEN];
 
-OneWire ow(DS18B20_DATA_PIN);
-DallasTemperature ds(&ow);
+static TempeaConfig config = TempeaConfig(EEPROM_CONFIG_ADDR);
 
-WiFiClient wclient;
-PubSubClient mqtt(MQTT_HOST, MQTT_PORT, wclient);
-static char str_temp[10];
-static char str_topic[20];
+// ############################################################# WIFI AND MQTT CLIENT
 
-void blink(byte times){
-  #if DEBUG == 1
-  Serial.print("LED: ");
-  #endif
+static WiFiClient wifiClient = WiFiClient();
 
-  for(byte x=0; x<times; x++){
-    #if DEBUG == 1
-    Serial.printf("%u", 1);
-    #else
-    digitalWrite(LED_PIN, LOW);
-    #endif
-    delay(BLINK_ON);
-    #if DEBUG == 1
-    Serial.printf("%u", 0);
-    #else
-    digitalWrite(LED_PIN, HIGH);
-    #endif
-    delay(BLINK_OFF);
+// ############################################################# SERVER
+
+ESP8266WebServer server(WIFI_CONFIG_SERVER_PORT);
+
+static const char* index_html= "<title>tempea-config</title>"
+"<style>"
+"body, input {"
+"background-color: #2c3e50 !important;"
+"color: #ecf0f1;"
+"font: 27px 'Trebuchet MS';}"
+"h1 {"
+"color: #27ae60;"
+"border-bottom: 2px solid #c0392b;}"
+"form {"
+"width: 600px;"
+"height: 600px;"
+"position: absolute;"
+"left:0; right:0;"
+"top:0; bottom:0;"
+"margin:auto;"
+"overflow:hidden;}"
+"div {"
+"margin:10px;"
+"float:left;"
+"width: 100%;}"
+"input {"
+"margin-right: 15px;"
+"font-size: 24px;"
+"float:right;"
+"border: 4px solid #2980b9;}"
+".submit {"
+"font-weight: bold;}"
+"</style>"
+"<form action='/config' method='POST'>"
+"<h1>tempea</h1>"
+"<div class='label'>Wifi SSID"
+"<input name='wifi_ssid' placeholder='config.get()->wifi_ssid'>"
+"</div>"
+"<div>Wifi Password"
+"<input name='wifi_password' placeholder='config.get()->wifi_password'>"
+"</div>"
+"<div>MQTT IP"
+"<input name='mqtt_host' placeholder='config.get()->mqtt_host'>"
+"</div>"
+"<div>MQTT Port"
+"<input name='mqtt_port' placeholder='config.get()->mqtt_port'>"
+"</div>"
+"<div>MQTT Client ID"
+"<input name='mqtt_client_id' placeholder='config.get()->mqtt_client_id'>"
+"</div>"
+"<div>MQTT Topic"
+"<input name='mqtt_topic' placeholder='config.get()->mqtt_topic'>"
+"</div>"
+"<div>"
+"<input class='submit' type='submit' value='Set'>"
+"</div>"
+"</form>";
+
+void handleConfig() {
+
+  if( server.hasArg("wifi_ssid") && server.arg("wifi_ssid") != NULL){
+    memset(config.get()->wifi_ssid, 0x00, WIFI_SSID_LEN);
+    Serial.print("SET config.get()->wifi_ssid:");
+    Serial.println(server.arg("wifi_ssid"));
+    server.arg("wifi_ssid").toCharArray(config.get()->wifi_ssid, WIFI_SSID_LEN);
+  }
+  if( server.hasArg("wifi_password") && server.arg("wifi_password") != NULL){
+    memset(config.get()->wifi_password, 0x00, WIFI_PASSWORD_LEN);
+    Serial.print("SET config.get()->wifi_password:");
+    Serial.println(server.arg("wifi_password"));
+    server.arg("wifi_password").toCharArray(config.get()->wifi_password, WIFI_PASSWORD_LEN);
+  }
+  if( server.hasArg("mqtt_host") && server.arg("mqtt_host") != NULL){
+    Serial.print("SET config.get()->mqtt_host:");
+    Serial.println(server.arg("mqtt_host"));
+    unsigned int tmp_mqtt_host[4];
+    server.arg("mqtt_host").toCharArray(string_buffer, STRING_BUFFER_LEN);
+    if(sscanf(string_buffer, "%u.%u.%u.%u", &tmp_mqtt_host[0], &tmp_mqtt_host[1], &tmp_mqtt_host[2], &tmp_mqtt_host[3]) == 4){
+      config.get()->mqtt_host[0] = tmp_mqtt_host[0];
+      config.get()->mqtt_host[1] = tmp_mqtt_host[1];
+      config.get()->mqtt_host[2] = tmp_mqtt_host[2];
+      config.get()->mqtt_host[3] = tmp_mqtt_host[3];
+    }
+  }
+  if( server.hasArg("mqtt_port") && server.arg("mqtt_port") != NULL){
+    Serial.print("SET config.get()->mqtt_port:");
+    Serial.println(server.arg("mqtt_port"));
+    int tmp_mqtt_port = server.arg("mqtt_port").toInt();
+    if(tmp_mqtt_port > 0){
+      config.get()->mqtt_port = tmp_mqtt_port;
+    }
+  }
+  if( server.hasArg("mqtt_client_id") && server.arg("mqtt_client_id") != NULL){
+    memset(config.get()->mqtt_client_id, 0x00, MQTT_CLIENT_ID_LEN);
+
+    Serial.print("SET config.get()->mqtt_client_id:");
+    Serial.println(server.arg("mqtt_client_id"));
+    server.arg("mqtt_client_id").toCharArray(config.get()->mqtt_client_id, sizeof(config.get()->mqtt_client_id));
+  }
+  if( server.hasArg("mqtt_topic") && server.arg("mqtt_topic") != NULL){
+    memset(config.get()->mqtt_topic, 0x00, MQTT_TOPIC_LEN);
+
+    Serial.print("SET config.get()->mqtt_topic:");
+    Serial.println(server.arg("mqtt_topic"));
+    server.arg("mqtt_topic").toCharArray(config.get()->mqtt_topic, sizeof(config.get()->mqtt_topic));
   }
 
-  #if DEBUG == 1
-  Serial.println();
-  #endif
+  if(config.save()){
+    server.send(200, "text/html", "<p>Set Config</p>");
+    ESP.restart();
+  } else {
+    server.send(400, "text/text", "400: Invalid Request");
+  }
 }
 
-bool do_connect(void){
+void handleNotFound(){
+  server.send(404, "text/plain", "404: Not found"); // Send HTTP status 404 (Not Found) when there's no handler for the URI in the request
+}
+
+void handleRoot() {
+  server.send(200, "text/html", index_html);
+}
+
+bool do_connect_wifi(void){
+  WiFi.mode(WIFI_STA);
+
   // Stage one: check for default connection
   for(byte t = 0; t<WIFI_RETRY_COUNT; t++){
     if(WiFi.status() == WL_CONNECTED){
-      Serial.printf("Connected to %s\n", WIFI_SSID);
+      Serial.printf("Connected to %s\n", config.get()->wifi_ssid);
       return true;
     }
     Serial.printf("Trying to connect to wifi %u\n", t);
+    Serial.printf("SSID: %s, PW: %s\n", config.get()->wifi_ssid, config.get()->wifi_password);
     if(t == 0){
-       WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      WiFi.begin(config.get()->wifi_ssid, config.get()->wifi_password);
     }
     delay(1000);
   }
-  Serial.printf("Error: Unable to connect to %s\n", WIFI_SSID);
+  Serial.printf("Error: Unable to connect to %s\n", config.get()->wifi_ssid);
   return false;
-}
-
-bool do_connect_mqtt(void){
-  if (!mqtt.connected()) {
-    mqtt.connect(MQTT_CLIENT_ID);
-    return true;
-  }
-  return false;
-}
-
-float measure_temp(void){
-  ds.requestTemperatures();
-  // TODO maybe a delay will be needed
-  //delay(750);
-  return ds.getTempCByIndex(0);
-}
-
-bool publish_mqtt(float temp){
-  Serial.printf(str_temp,"%f\n",temp);
-  Serial.printf(str_topic,"%s\n",MQTT_TOPIC);
-  mqtt.publish(str_topic, str_temp);
-  return true;
 }
 
 void esp_sleep(uint8_t seconds){
@@ -115,6 +173,7 @@ void esp_sleep(uint8_t seconds){
 }
 
 void setup(){
+  delay(1000);
 #if DEBUG == 1
   Serial.begin(115200);
   String reason = ESP.getResetReason();
@@ -138,32 +197,81 @@ void setup(){
   // Serial is only available if pin is not defined as output
   pinMode(LED_PIN, OUTPUT);
 #endif
+
+  //reset the config if needed
+#if RESET_CONFIG_ON_BOOT == 1
+  config.reset();
+#endif
+
+  //inital config setup
+  config.load();
+}
+
+void run_setup(){
+  Serial.printf("run_setup\n");
+
+  WiFi.mode(WIFI_AP);
+
+  WiFi.setOutputPower(20.5);
+  WiFi.softAP(WIFI_CONFIG_SSID);
+
+  WiFi.printDiag(Serial);
+
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(myIP);
+
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/config", HTTP_POST, handleConfig); 
+  server.onNotFound(handleNotFound);
+  server.begin();
+  Serial.println("HTTP server started");
+
+  for(;;){
+    server.handleClient();
+  }
 }
 
 void loop(){
   
-  if(do_connect()){
+  if(config.validate()){
+    Serial.printf("Config exists and was loaded");
+  } else {
+    run_setup();
+  }
+
+  if(do_connect_wifi()){
+    Serial.printf("run_main");
+
     blink(1);
 
-    float temp = measure_temp();
-    if(temp == -127){
+    MqttClient mqttClient = MqttClient(&wifiClient, &config);
+    TempSensor tempSensor = TempSensor(DS18B20_DATA_PIN);
+
+    float temp = tempSensor.getTempC();
+    if(temp == -273.15){
       Serial.printf("Temperature sensor not connected on pin %u\n", DS18B20_DATA_PIN);
+      snprintf(string_buffer, STRING_BUFFER_LEN, "no sensor on pin %u", DS18B20_DATA_PIN);
     }else{
       Serial.printf("Temp: %f\n", temp);
+      snprintf(string_buffer, STRING_BUFFER_LEN, "%f", temp);
+    }
 
-      bool mqtt_err = false;
-      mqtt_err = do_connect_mqtt() | mqtt_err;
-      mqtt_err = publish_mqtt(temp) | mqtt_err;
-      if(mqtt_err){
-        Serial.printf("Unable to publish data to mqtt\n");
-      }
+    if(!mqttClient.connect()){
+      Serial.printf("Unable to connect to mqtt server\n");
+    }
+
+    if(!mqttClient.publish(string_buffer)){
+      Serial.printf("Unable to publish data to mqtt\n");
+      run_setup();
     }
 
     blink(2);
+    esp_sleep(SLEEP_SEC);
+    return;
   } else {
     Serial.printf("Unable to connect to wifi\n");
     blink(5);
+    run_setup();
   }
-
-  esp_sleep(SLEEP_SEC);
 }
